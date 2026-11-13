@@ -1,0 +1,9 @@
+{
+  "name": "tiny-glade-web",
+  "version": "2.0.0",
+  "description": "《林间小世界 · Tiny Glade》极致视觉单文件离线3D治愈建造游戏 (Custom WebGL2 HDR/SSAO/Shadow/Reflection Procedural Engine)",
+  "scripts": {
+    "build": "node build.js",
+    "start": "node server.mjs"
+  }
+}

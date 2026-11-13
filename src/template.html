@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>林间小世界 · Tiny Glade — 治愈微缩建造物语</title>
+  <style>
+/*__INLINE_CSS__*/
+  </style>
+</head>
+<body>
+  <canvas id="glade-canvas"></canvas>
+
+  <!-- 3D Screen-Projected Interactive Entity Handles (Buildings, Walls & Stamps) -->
+  <div id="gizmo-layer" aria-hidden="true"></div>
+
+  <!-- 3D World-Space Live Dimension Pills & Emergent Discovery Floating Badges -->
+  <div id="world-feedback-layer" aria-hidden="true">
+    <div id="drag-dim-pill" class="drag-dim-pill hidden"></div>
+    <div id="world-badges-wrap"></div>
+  </div>
+
+  <!-- Rule of Thirds Framing Grid (Photo Mode) -->
+  <div id="photo-grid" class="hidden" aria-hidden="true">
+    <div class="grid-v v1"></div>
+    <div class="grid-v v2"></div>
+    <div class="grid-h h1"></div>
+    <div class="grid-h h2"></div>
+  </div>
+
+  <!-- First-Person Villager Stroll Banner ('G') -->
+  <div id="stroll-banner" class="stroll-banner hidden ui-interactive">
+    <span class="stroll-dot"></span>
+    <span class="stroll-txt"><b>林间漫步视角</b> · WASD 行走（Shift 轻跑） · 左键拖拽环顾 · 点击小羊摸头</span>
+    <button id="btn-exit-stroll" class="stroll-exit-btn">返回建造 (G / Esc)</button>
+  </div>
+
+  <!-- Clean Cinema View Restore Pill ('Tab') -->
+  <button id="hud-restore-pill" class="hud-restore-pill hidden ui-interactive" title="恢复显示界面 (Tab)">
+    显示界面 <kbd>Tab</kbd>
+  </button>
+
+  <!-- Top HUD -->
+  <header id="top-hud">
+    <!-- Left: Brand, Map Territory Scale & Collapsible Cozy Prompt -->
+    <div class="hud-left ui-interactive">
+      <div class="brand-card">
+        <div class="brand-emblem" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="26" height="26">
+            <path d="M4 17.5 L16 5.5 L28 17.5 Z" fill="#c85d44"/>
+            <path d="M16 5.5 L28 17.5 L23.5 17.5 L16 10 Z" fill="#a94730" opacity="0.45"/>
+            <rect x="8" y="17" width="16" height="10.5" rx="2" fill="#efe4d0" stroke="#6b4c35" stroke-width="1.5"/>
+            <path d="M13.8 27.5 V21.2 A2.2 2.2 0 0 1 18.2 21.2 V27.5 Z" fill="#6b4c35"/>
+            <circle cx="21" cy="21" r="1.4" fill="#f5b942"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>林间小世界 <span class="sub-en">Tiny Glade</span></h1>
+          <div class="stats-line" id="glade-stats">小屋 4 · 石拱 1 · 木桥 1 · 绵羊 7</div>
+        </div>
+
+        <button id="btn-map-scale" class="map-scale-pill" title="打开地图工坊：无损扩建当前领地或创建新地形 (快捷键 M)">
+          <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M2 4.5 L6 2.5 L10 4.5 L14 2.5 V11.5 L10 13.5 L6 11.5 L2 13.5 Z" stroke-linejoin="round"/>
+            <path d="M6 2.5 V11.5 M10 4.5 V13.5" opacity="0.6"/>
+          </svg>
+          <span id="map-scale-label">96×96m 广阔林谷</span>
+          <span id="map-expand-tag" class="expand-tag">扩建 ↗</span>
+        </button>
+
+        <button id="btn-theme-toggle" class="pill-icon-btn" title="展开或收起微缩建造课题">课题</button>
+      </div>
+
+      <div id="theme-banner" class="theme-banner">
+        <span class="theme-tag">微缩课题</span>
+        <strong id="theme-title">林间牧羊小筑</strong>
+        <span id="theme-desc">建造一座带石拱门院墙、烟囱与花圃的温暖农舍，让小羊在门前吃草。</span>
+        <span class="theme-actions">
+          <button id="btn-theme-next" class="theme-mini-btn" title="换一个建造灵感">换题 ↻</button>
+          <button id="btn-theme-close" class="theme-mini-btn" title="收起课题提示">✕</button>
+        </span>
+      </div>
+    </div>
+
+    <!-- Right: Atmosphere, Villager Stroll, Map Workshop, Save Gallery & Photo Studio -->
+    <div class="hud-right ui-interactive">
+      <div class="atmo-card">
+        <div class="time-row">
+          <span id="time-icon" class="time-icon" aria-hidden="true"></span>
+          <span id="time-label" class="time-label">16:18</span>
+          <input id="slider-time" type="range" min="0" max="24" step="0.05" value="16.3" title="拖动调节昼夜晨昏光影" />
+          <div class="quick-times">
+            <button data-time="6.6" title="晨曦薄雾">晨</button>
+            <button data-time="13.0" title="晴朗正午">午</button>
+            <button data-time="17.4" title="金色黄昏">昏</button>
+            <button data-time="22.0" title="星夜点灯">夜</button>
+          </div>
+          <button id="btn-autocycle" class="mini-toggle" title="自动昼夜自然流转">⟳</button>
+        </div>
+
+        <div class="season-row" id="season-bar">
+          <button data-season="summer" class="active"><span class="s-dot" style="background:#5b8f3d"></span>初夏</button>
+          <button data-season="autumn"><span class="s-dot" style="background:#d96c2c"></span>金秋</button>
+          <button data-season="winter"><span class="s-dot" style="background:#8cb4d2"></span>初雪</button>
+          <button data-season="spring"><span class="s-dot" style="background:#eb9ab3"></span>春樱</button>
+          <button data-season="enchanted"><span class="s-dot" style="background:#3d9e82"></span>幽林</button>
+        </div>
+      </div>
+
+      <!-- System Actions -->
+      <div class="sys-bar">
+        <button id="btn-undo" class="sys-btn icon-only" title="撤销上一步 (Ctrl+Z)" disabled>
+          <svg viewBox="0 0 18 18" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6.5 4.5 L3 8 L6.5 11.5"/><path d="M3.5 8 H10.5 A4 4 0 0 1 10.5 15 H7.5"/>
+          </svg>
+        </button>
+        <button id="btn-redo" class="sys-btn icon-only" title="重做 (Ctrl+Y)" disabled>
+          <svg viewBox="0 0 18 18" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11.5 4.5 L15 8 L11.5 11.5"/><path d="M14.5 8 H7.5 A4 4 0 0 0 7.5 15 H10.5"/>
+          </svg>
+        </button>
+        <button id="btn-stroll" class="sys-btn" title="以村民第一人称视角漫步林间与木桥 (快捷键 G)">
+          <svg viewBox="0 0 18 18" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="9.5" cy="3.6" r="1.7"/>
+            <path d="M6.5 8.5 L9.2 6.5 L12.2 8.8 M9.2 6.5 L8.6 11.2 L6.2 15.2 M8.8 11.2 L11.6 15.2"/>
+          </svg>
+          <span>漫步</span>
+          <kbd>G</kbd>
+        </button>
+        <button id="btn-map-workshop" class="sys-btn sage-btn" title="新建自定义地形、无损扩建当前地图或加载奇景预设 (快捷键 M)">
+          <svg viewBox="0 0 18 18" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2.2 4.5 L6.8 2.6 L11.2 4.5 L15.8 2.6 V13.5 L11.2 15.4 L6.8 13.5 L2.2 15.4 Z"/>
+            <path d="M6.8 2.6 V13.5 M11.2 4.5 V15.4" opacity="0.65"/>
+          </svg>
+          <span>地图工坊</span>
+          <kbd>M</kbd>
+        </button>
+        <button id="btn-save-menu" class="sys-btn" title="多槽位本地存档画廊与单文件导出导入">
+          <svg viewBox="0 0 18 18" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3.5 3 H12.5 L15 5.5 V14.5 A1 1 0 0 1 14 15.5 H4 A1 1 0 0 1 3 14.5 V4 A1 1 0 0 1 3.5 3 Z"/>
+            <path d="M6 3 V7 H11.5 V3 M5.8 15.5 V10.5 H12.2 V15.5"/>
+          </svg>
+          <span>存档库</span>
+        </button>
+        <button id="btn-photo" class="sys-btn accent-btn" title="进入微缩移轴摄影棚保存明信片 (快捷键 P)">
+          <svg viewBox="0 0 18 18" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2.5 6.2 A1.5 1.5 0 0 1 4 4.7 H5.6 L6.8 3.2 H11.2 L12.4 4.7 H14 A1.5 1.5 0 0 1 15.5 6.2 V13.2 A1.5 1.5 0 0 1 14 14.7 H4 A1.5 1.5 0 0 1 2.5 13.2 Z"/>
+            <circle cx="9" cy="9.7" r="2.6"/>
+          </svg>
+          <span>摄影</span>
+          <kbd>P</kbd>
+        </button>
+        <button id="btn-audio" class="sys-btn icon-only" title="开关林间竖琴与自然环境音效" aria-label="音效开关"></button>
+        <button id="btn-help" class="sys-btn icon-only" title="建造手感与涌现机制指南">？</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================
+       MODAL 1: UNIFIED MAP WORKSHOP (Custom Creator / Lossless Expand / Presets)
+       ======================================================================== -->
+  <section id="modal-map-workshop" class="workshop-modal hidden ui-interactive" aria-label="林间地图工坊">
+    <div class="pop-header">
+      <div class="ws-title-wrap">
+        <strong>林间地图工坊</strong>
+        <span class="ws-sub">自由创建新地貌 · 原地无损扩建领地 · 精选微缩奇景</span>
+      </div>
+      <button class="pop-close" data-close="modal-map-workshop">✕</button>
+    </div>
+
+    <div class="workshop-tabs" role="tablist">
+      <button class="ws-tab active" data-ws-tab="create">🌱 新建自定义地图</button>
+      <button class="ws-tab" data-ws-tab="expand">↗ 无损扩建当前领地</button>
+      <button class="ws-tab" data-ws-tab="presets">✨ 精选奇景预设</button>
+    </div>
+
+    <!-- Tab 1: Create New Custom Map -->
+    <div id="ws-pane-create" class="ws-pane">
+      <div class="ws-sec-label">1. 选择可建造幅员规格（外围另附 ±260m 连绵远山天际线）</div>
+      <div id="ws-size-cards" class="ws-size-grid"></div>
+
+      <div class="ws-sec-label">2. 选择自然地貌原型</div>
+      <div id="ws-biome-cards" class="ws-biome-grid"></div>
+
+      <div class="ws-sec-label">3. 生态气候与地形种子</div>
+      <div class="ws-controls-grid">
+        <div class="ws-ctrl-box">
+          <span class="ws-ctrl-lbl">初始季节氛围</span>
+          <div id="ws-season-pills" class="ws-mini-pills"></div>
+        </div>
+        <div class="ws-ctrl-box">
+          <div class="ws-ctrl-head">
+            <span class="ws-ctrl-lbl">林木繁茂度</span>
+            <span id="ws-tree-val" class="ws-val">100%</span>
+          </div>
+          <input id="ws-tree-slider" type="range" min="0.2" max="1.7" step="0.1" value="1.0" />
+        </div>
+        <div class="ws-ctrl-box">
+          <div class="ws-ctrl-head">
+            <span class="ws-ctrl-lbl">水系丰沛度</span>
+            <span id="ws-water-val" class="ws-val">100%</span>
+          </div>
+          <input id="ws-water-slider" type="range" min="0.4" max="1.6" step="0.1" value="1.0" />
+        </div>
+        <div class="ws-ctrl-box">
+          <span class="ws-ctrl-lbl">地形随机种子</span>
+          <div class="ws-seed-row">
+            <input id="ws-seed-input" type="number" min="1" max="999999" value="20268" />
+            <button id="btn-ws-rand-seed" type="button" class="ws-seed-btn" title="随机生成新种子">随机 ↻</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ws-footer">
+        <span class="ws-hint">提示：生成新世界前可在「存档库」保存当前作品</span>
+        <button id="btn-ws-generate" class="ws-primary-btn">创建这片林间新世界 →</button>
+      </div>
+    </div>
+
+    <!-- Tab 2: Lossless In-Place Map Expansion -->
+    <div id="ws-pane-expand" class="ws-pane hidden">
+      <div class="expand-hero">
+        <div class="expand-rings" aria-hidden="true">
+          <div class="ring r-136"><span>136m</span></div>
+          <div class="ring r-96"><span>96m</span></div>
+          <div class="ring r-60"><span>60m</span></div>
+        </div>
+        <div class="expand-copy">
+          <div id="ws-expand-current" class="expand-cur-badge">当前幅员：96×96m · 广阔林谷</div>
+          <p><b>原地无损扩建技术</b>：向外平滑展开全新林谷、溪畔与绵羊草甸，<b>100% 完整保留</b>你已建造的所有房屋、石墙、拱门、池塘与小径，且支持 <b>Ctrl+Z 一键撤销</b>！</p>
+        </div>
+      </div>
+      <div id="ws-expand-cards" class="expand-cards"></div>
+    </div>
+
+    <!-- Tab 3: Curated Diorama Presets -->
+    <div id="ws-pane-presets" class="ws-pane hidden">
+      <div class="preset-grid" id="preset-list"></div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       MODAL 2: 6-SLOT OFFLINE SAVE GALLERY & .GLADE.JSON ARCHIVE
+       ======================================================================== -->
+  <div id="modal-save" class="floating-popover save-popover hidden ui-interactive">
+    <div class="pop-header">
+      <strong>离线存档画廊</strong>
+      <button class="pop-close" data-close="modal-save">✕</button>
+    </div>
+    <div class="save-name-row">
+      <input id="save-title-input" type="text" maxlength="24" placeholder="为当前林间作品命名（选填）..." />
+    </div>
+    <div id="save-slots-list" class="save-slots-list"></div>
+    <div class="save-file-bar">
+      <button id="btn-export-json" class="action-half">⬇ 导出 .glade.json</button>
+      <label class="action-half file-label">
+        ⬆ 导入 .glade.json
+        <input id="input-import-json" type="file" accept=".json" hidden />
+      </label>
+    </div>
+    <div class="save-toast">100% 离线本地存储 · 含完整地形、建筑与多尺度疆域</div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL 3: TACTILE & EMERGENT BUILDING GUIDE
+       ======================================================================== -->
+  <div id="modal-help" class="floating-popover help-popover hidden ui-interactive">
+    <div class="pop-header">
+      <strong>《林间小世界》涌现建造与交互指南</strong>
+      <button class="pop-close" data-close="modal-help">✕</button>
+    </div>
+    <ul class="guide-list">
+      <li><b>幽灵蓝图与弹性塑形</b>：选「方屋 / 圆塔」悬停地面可预览落点蓝图，按住拖拽实时显示尺寸；松手后拖动建筑、石墙或装饰上的 <b>▲屋顶 / ⇕墙高 / ⇔尺寸 / 拱抬升 / ↻旋转</b> 手柄自由塑形！</li>
+      <li><b>女墙与多层叠建</b>：将 <b>▲屋顶手柄</b> 向下拉到底，斜顶自动变为<b>城堡石质垛口女墙</b>；在屋顶露台上继续拖拽可向上叠建多层塔堡！</li>
+      <li><b>小径涌现奇迹</b>：用「林间小径」穿过石墙自动砌出<b>楔石圆拱门</b>（木篱笆则敞开<b>花园木门</b>），贴近墙根自动长出<b>拱门石阶与暖灯</b>，跨过水面自动架起<b>木板小桥</b>！</li>
+      <li><b>地图扩建与自定义世界 (M)</b>：点击顶部幅员徽章或按 <b>M</b> 打开「地图工坊」，支持<b>原地无损扩建至 136×136m（5倍面积）</b>，或任选 6 大地貌种子创建新地图！</li>
+      <li><b>村民第一人称漫步 (G)</b>：随时按 <b>G</b> 化身为林间村民，用 <b>WASD</b> 亲自走过你建造的石拱门与木桥，聆听草地、石板与木桥的不同脚步声！</li>
+      <li><b>快捷操作锦囊</b>：<b>Shift+滚轮</b> 或 <b>[ / ]</b> 调节笔刷粗细；<b>Tab</b> 隐藏全部界面沉浸观赏；点击草地<b>小绵羊</b>或池塘<b>小鸭</b>摸头互动！</li>
+    </ul>
+  </div>
+
+  <!-- Bottom Contextual Sub-Bar & Main 10-Tool Cozy Dock -->
+  <footer id="bottom-dock-wrap">
+    <!-- Dynamic Unified Selection Quick Bar (Building / Wall / Stamp) -->
+    <div id="selection-bar" class="context-pill hidden ui-interactive"></div>
+
+    <!-- Tool Sub-Options, Swatches & Live Brush Radius Slider -->
+    <div id="subtool-bar" class="context-pill ui-interactive"></div>
+
+    <!-- Main 10-Tool Bespoke SVG Dock -->
+    <nav id="main-toolbar" class="main-dock ui-interactive" aria-label="建造工具栏">
+      <button class="tool-btn" data-tool="select" title="漫游观察与选中微调建筑/石墙/装饰 (快捷键 1)">
+        <span class="hk">1</span>
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+            <path d="M6.5 4.2 L18.2 11.6 L12.6 13.1 L15.2 18.8 L12.7 19.9 L10.1 14.2 L6.5 17.6 Z" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span class="lbl">漫游微调</span>
+      </button>
+
+      <button class="tool-btn active" data-tool="rect" title="按住拖拽建造方屋、农舍与连廊，支持屋顶叠建 (快捷键 2)">
+        <span class="hk">2</span>
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+            <path d="M3.5 12 L12 4.5 L20.5 12 Z" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+            <rect x="6" y="12" width="12" height="8" rx="1.2" stroke="currentColor" stroke-width="1.75"/>
+            <path d="M10.5 20 V15.5 A1.5 1.5 0 0 1 13.5 15.5 V20" stroke="currentColor" stroke-width="1.6"/>
+          </svg>
+        </span>
+        <span class="lbl">方屋建造</span>
+      </button>
+
+      <button class="tool-btn" data-tool="tower" title="按住拖拽建造童话圆塔、巫师尖顶与城堡角楼 (快捷键 3)">
+        <span class="hk">3</span>
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+            <path d="M6.5 10.5 L12 3 L17.5 10.5 Z" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+            <rect x="8" y="10.5" width="8" height="10" rx="1" stroke="currentColor" stroke-width="1.75"/>
+            <path d="M12 3 V1.5 M11 14.2 H13" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="lbl">圆塔尖顶</span>
+      </button>
+
+      <button class="tool-btn" data-tool="wall" title="自由绘制弯曲石墙、女墙城垣与木质牧场篱笆 (快捷键 4)">
+        <span class="hk">4</span>
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+            <rect x="3.5" y="6.5" width="17" height="11" rx="1.8" fill="currentColor" fill-opacity="0.16" stroke="currentColor" stroke-width="1.75"/>
+            <path d="M3.5 12 H20.5 M9.5 6.5 V12 M15.5 6.5 V12 M12.5 12 V17.5" stroke="currentColor" stroke-width="1.6"/>
+          </svg>
+        </span>
+        <span class="lbl">石墙篱笆</span>
+      </button>
+
+      <button class="tool-btn" data-tool="path" title="涂抹小径：遇墙开石拱、贴屋生木门、涉水架木桥 (快捷键 5)">
+        <span class="hk">5</span>
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+            <path d="M5.5 20 C6 14.5 9.5 13 10.5 9.5 C11.2 7 10 5 11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M12.5 20.5 C13.2 15.5 16.5 13.8 17 9.8 C17.3 7.2 16 5.2 17 3.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="9.8" cy="16.5" r="1.1" fill="currentColor" opacity="0.55"/>
+            <circle cx="13.2" cy="11.5" r="1.1" fill="currentColor" opacity="0.55"/>
+          </svg>
+        </span>
+        <span class="lbl">林间小径</span>
+      </button>
+
+      <button class="tool-btn" data-tool="stamp" title="添置花格窗、老虎窗、冒烟烟囱、旗帜、路灯与水井 (快捷键 6)">
+        <span class="hk">6</span>
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+            <path d="M6.5 19.5 V10.5 A5.5 5.5 0 0 1 17.5 10.5 V19.5 Z" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+            <path d="M12 5 V19.5 M6.5 13 H17.5" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+        </span>
+        <span class="lbl">门窗装饰</span>
+      </button>
+
+      <button class="tool-btn" data-tool="palette" title="为建筑刷涂屋顶陶瓦色彩与墙体石木材质 (快捷键 7)">
+        <span class="hk">7</span>
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+            <path d="M12 4 A8 8 0 1 0 12.5 20 C14.2 20 15.2 18.8 15.2 17.4 C15.2 16.2 14.5 15.4 15.5 14.6 C16.3 14 18 14.3 19.2 13.1 A6.8 6.8 0 0 0 12 4 Z" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.75"/>
+            <circle cx="8.5" cy="10.5" r="1.2" fill="currentColor"/>
+            <circle cx="12" cy="8.2" r="1.2" fill="currentColor"/>
+            <circle cx="8.8" cy="14.5" r="1.2" fill="currentColor"/>
+          </svg>
+        </span>
+        <span class="lbl">色彩材质</span>
+      </button>
+
+      <button class="tool-btn" data-tool="terrain" title="挖掘清澈池塘护城河、隆起山丘崖壁与平整台地 (快捷键 8)">
+        <span class="hk">8</span>
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+            <path d="M3 16.5 L8.8 8.2 L13.5 14 L16.8 9.8 L21 16.5 Z" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+            <path d="M3.5 19.5 Q8 18 12 19.5 T20.5 19.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="lbl">池塘地形</span>
+      </button>
+
+      <button class="tool-btn" data-tool="nature" title="种植繁茂树林、播撒野花草甸与呼唤小绵羊 (快捷键 9)">
+        <span class="hk">9</span>
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+            <circle cx="12" cy="9.5" r="5.2" fill="currentColor" fill-opacity="0.24" stroke="currentColor" stroke-width="1.75"/>
+            <path d="M12 14.7 V20.2 M9.2 20.2 H14.8" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="lbl">林木绵羊</span>
+      </button>
+
+      <button class="tool-btn" data-tool="demolish" title="轻柔拆除建筑、石墙、装饰或林木 (快捷键 0)">
+        <span class="hk">0</span>
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+            <path d="M14.2 5.2 L18.8 9.8 L15.6 13 L11 8.4 Z" fill="currentColor" fill-opacity="0.24" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+            <path d="M12.5 10.8 L5.2 18.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="lbl">轻柔拆除</span>
+      </button>
+    </nav>
+
+    <div class="camera-hint">右键拖拽旋转 · 滚轮缩放 · Shift+滚轮调笔刷 · G键林间漫步 · M键地图工坊 · Tab纯净视野</div>
+  </footer>
+
+  <!-- Cinematic Photo Studio Bar (Shown in Photo Mode) -->
+  <section id="photo-studio" class="photo-studio hidden ui-interactive">
+    <div class="photo-title">📸 微缩移轴摄影棚</div>
+    <label class="photo-ctrl">
+      <span>移轴虚化</span>
+      <input id="slider-dof" type="range" min="0" max="1.2" step="0.02" value="0.55" />
+    </label>
+    <label class="photo-ctrl">
+      <span>镜头焦段</span>
+      <input id="slider-fov" type="range" min="25" max="65" step="1" value="43" />
+    </label>
+    <label class="photo-ctrl">
+      <span>光影方位</span>
+      <input id="slider-azimuth" type="range" min="0" max="6.28" step="0.04" value="0.72" />
+    </label>
+    <label class="photo-ctrl">
+      <span>昼夜时刻</span>
+      <input id="slider-photo-time" type="range" min="0" max="24" step="0.05" value="16.3" />
+    </label>
+    <button id="btn-snap-png" class="snap-btn">保存高清明信片</button>
+    <button id="btn-exit-photo" class="exit-photo-btn">返回建造 (Esc)</button>
+  </section>
+
+  <!-- Toast Notification -->
+  <div id="toast-msg" class="toast-msg hidden"></div>
+
+  <script>
+/*__INLINE_JS__*/
+  </script>
+</body>
+</html>
